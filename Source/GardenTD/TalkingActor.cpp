@@ -22,7 +22,6 @@ void ATalkingActor::BeginPlay()
 	}
 }
 
-// Called every frame
 void ATalkingActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);

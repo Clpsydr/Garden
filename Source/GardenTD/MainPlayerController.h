@@ -30,14 +30,6 @@ public:
 	//opens or closes widget depending on its state
 	void CallMenu();
 
-	//then, message tool
-	//actor launches dialogue widget and auto (then within touch)
-	//msg tool has table from dialogue struct, with all quotes, and plays the first one.
-
-	//3d model + texture
-	//2 sounds in distinct languages
-	
-
 protected:
 	APawn* PlayerPawn;
 
