@@ -5,7 +5,8 @@
 #include "Engine/DataTable.h"
 #include "GameStructs.generated.h"
 
-//thatll need character struct to reduce text repetition
+//also needs character struct to reduce text repetition
+//also needs FTEXT/FNAMe for text due to localization
 
 USTRUCT(BlueprintType)
 struct FDialogueText : public FTableRowBase
