@@ -7,7 +7,7 @@ void UDialogBoxWidget::SyncData(const FDialogueText& NewData)
 {
 	Portrait->SetBrushFromTexture(NewData.Portrait.LoadSynchronous());
 
-	SpeakerName->SetText(FText::FromString(NewData.CharacterName));
+	SpeakerName->SetText(FText::FromName(NewData.CharacterName));
 
-	MainText->SetText(FText::FromString(NewData.MainText));
+	MainText->SetText(NewData.MainText);
 }

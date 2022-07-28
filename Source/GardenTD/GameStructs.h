@@ -14,16 +14,16 @@ struct FDialogueText : public FTableRowBase
 	GENERATED_BODY()
 
 	UPROPERTY(EditDefaultsOnly, Category = "General")
-		FString TextLabel;
+		FName TextLabel;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Char")
 		TSoftObjectPtr<UTexture2D> Portrait;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Char")
-		FString CharacterName;
+		FName CharacterName;
 
 	UPROPERTY(EditDefaultsOnly, Category = "General")
-		FString MainText;
+		FText MainText;
 
 
 };

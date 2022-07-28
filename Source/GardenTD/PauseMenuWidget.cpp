@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "MainPlayerController.h"
 #include "Internationalization/Internationalization.h"
+#include "Internationalization/Culture.h"
 
 void UPauseMenuWidget::NativeConstruct()
 {
@@ -39,6 +40,8 @@ void UPauseMenuWidget::NativeConstruct()
 	if (LangBox)
 	{
 		LangBox->SetVisibility(ESlateVisibility::Hidden);
+
+		
 	}
 }
 
@@ -95,9 +98,6 @@ void UPauseMenuWidget::ChangeLocale(FString SelectedItem, ESelectInfo::Type Sele
 
 void UPauseMenuWidget::Options()
 {
-	GEngine->AddOnScreenDebugMessage(INDEX_NONE, 2.f, FColor::Yellow,
-		TEXT("Looking in Options"));
-
 	if (LangBox)
 	{
 		if (LangBox->IsVisible())
@@ -107,6 +107,15 @@ void UPauseMenuWidget::Options()
 		else
 		{
 			LangBox->SetVisibility(ESlateVisibility::Visible);
+
+			FCulturePtr CuCulture = FInternationalization::Get().GetCurrentCulture();
+			if (CuCulture.IsValid())
+			{
+				GEngine->AddOnScreenDebugMessage(INDEX_NONE, 2.f, FColor::Yellow,
+					TEXT("current culture: " + CuCulture->GetEnglishName()));
+				
+				LangSelectBox->SetSelectedOption(CuCulture->GetEnglishName());
+			}
 		}
 	}
 }
