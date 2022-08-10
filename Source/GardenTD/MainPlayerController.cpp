@@ -24,13 +24,25 @@ void AMainPlayerController::BeginPlay()
 	Super::BeginPlay();
 
 	PlayerPawn = Cast<APlayerCharacter>(GetPawn());
+	OriginalPawn = Cast<APlayerCharacter>(GetPawn());
+}
+
+// Pawns utilize OnPossess or OnUnpossess events in BP to remove or change themselves accordingly
+void AMainPlayerController::ChangePawnTo(APlayerCharacter* NewPawn)
+{
+	if (NewPawn)
+	{
+		UnPossess();
+		PlayerPawn = NewPawn;
+		Possess(NewPawn);
+	}
 }
 
 void AMainPlayerController::MoveForward(float AxisValue)
 {
 	if (PlayerPawn && AxisValue != 0.0f)
 	{
-		PlayerPawn->AddMovementInput(PlayerPawn->GetActorForwardVector(), AxisValue);
+		PlayerPawn->MoveFront(AxisValue);
 	}
 }
 
@@ -38,7 +50,8 @@ void AMainPlayerController::MoveRight(float AxisValue)
 {
 	if (PlayerPawn && AxisValue != 0.0f)
 	{
-		PlayerPawn->AddMovementInput(PlayerPawn->GetActorRightVector(), AxisValue);
+		PlayerPawn->MoveSide(AxisValue);
+
 	}
 }
 
@@ -46,7 +59,7 @@ void AMainPlayerController::CameraTurnX(float AxisValue)
 {
 	if (PlayerPawn && AxisValue != 0.0f)
 	{
-		PlayerPawn->AddControllerYawInput(AxisValue);
+		PlayerPawn->CameraTurnX(AxisValue);
 	}
 }
 
@@ -54,7 +67,7 @@ void AMainPlayerController::CameraTurnY(float AxisValue)
 {
 	if (PlayerPawn && AxisValue != 0.0f)
 	{
-		PlayerPawn->AddControllerPitchInput(AxisValue);
+		PlayerPawn->CameraTurnY(AxisValue);
 	}
 }
 

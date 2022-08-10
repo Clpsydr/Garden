@@ -20,4 +20,24 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 }
 
+void APlayerCharacter::MoveSide(float AxisValue)
+{
+	AddMovementInput(GetActorRightVector(), AxisValue);
+}
+
+void APlayerCharacter::MoveFront(float AxisValue)
+{
+	AddMovementInput(GetActorForwardVector(), AxisValue);
+}
+
+void APlayerCharacter::CameraTurnX(float AxisValue)
+{
+	AddControllerYawInput(AxisValue);
+}
+
+void APlayerCharacter::CameraTurnY(float AxisValue)
+{
+	AddControllerPitchInput(AxisValue);
+}
+
 

@@ -5,6 +5,7 @@
 #include "MainPlayerController.generated.h"
 
 class UPauseMenuWidget;
+class APlayerCharacter;
 
 UCLASS()
 class GARDENTD_API AMainPlayerController : public APlayerController
@@ -27,11 +28,18 @@ public:
 	void Jump();
 	void StopJumping();
 
+	UFUNCTION(BlueprintCallable)
+	void ChangePawnTo(APlayerCharacter* NewPawn);
+
 	//opens or closes widget depending on its state
 	void CallMenu();
 
 protected:
-	APawn* PlayerPawn;
+	UPROPERTY(BlueprintReadWrite)
+	APlayerCharacter* PlayerPawn;
+
+	UPROPERTY(BlueprintReadWrite)
+	APlayerCharacter* OriginalPawn;
 
 	virtual void BeginPlay() override;
 

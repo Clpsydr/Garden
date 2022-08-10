@@ -14,5 +14,15 @@
 				"SlateCore"
 			]
 		}
+	],
+	"Plugins": [
+		{
+			"Name": "Landmass",
+			"Enabled": true
+		},
+		{
+			"Name": "Water",
+			"Enabled": true
+		}
 	]
 }

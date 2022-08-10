@@ -25,4 +25,12 @@ protected:
 
 public:	
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void MoveSide(float AxisValue);
+
+	virtual void MoveFront(float AxisValue);
+
+	virtual void CameraTurnX(float AxisValue);
+
+	virtual void CameraTurnY(float AxisValue);
 };
