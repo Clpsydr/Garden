@@ -32,8 +32,11 @@ private:
 	FTimerHandle HandleToShutWidget;
 	FTimerDelegate WidgetTTL;
 
+	//keeps a stack of called messages to show them in a row
+	TArray<UDialogBoxWidget*> MessageBackLog;
+
 public:	
 	virtual void Tick(float DeltaTime) override;
 
-	void SayDialogueLine(const FDialogueText& NewLineToSay);  //
+	void SayDialogueLine(FString RowName, FString ContextString);  //
 };

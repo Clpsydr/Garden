@@ -28,3 +28,23 @@ struct FDialogueText : public FTableRowBase
 
 };
 
+USTRUCT(BlueprintType)
+struct FGaugeWidgetStats
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gauge")
+		FName Description;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gauge")
+		float CurrentValue;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gauge")
+		float MaxValue;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Gauge")
+		FLinearColor GaugeColor;
+
+	float GetRatio() { return CurrentValue / MaxValue; };
+};
+

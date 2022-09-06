@@ -11,3 +11,8 @@ void UDialogBoxWidget::SyncData(const FDialogueText& NewData)
 
 	MainText->SetText(NewData.MainText);
 }
+
+void UDialogBoxWidget::AutoShut(float TTL)
+{
+	//currently shuts by timer from manager
+}

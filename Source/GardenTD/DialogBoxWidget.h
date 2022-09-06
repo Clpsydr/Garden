@@ -1,3 +1,6 @@
+/*
+* Launches a widget displaying text from the datatable
+*/
 #pragma once
 
 #include "CoreMinimal.h"
@@ -31,6 +34,8 @@ public:
 			void SyncData(const FDialogueText& NewData);
 
 		//operation to display data
+
 		//launch timer to autoshutdown
-	
+		UFUNCTION()
+			void AutoShut(float TTL);
 };

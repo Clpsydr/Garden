@@ -51,12 +51,11 @@ void AFloatyBoard::FloatMode()
 // perhaps needs a component update or something similar.
 void AFloatyBoard::SinkMode()
 {
-	
-	for (auto BuyData : Buoyancy->BuoyancyData.Pontoons)
+	for (auto BuoyData : Buoyancy->BuoyancyData.Pontoons)
 	{
 		//TArray<FSphericalPontoon>
 		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 2.f, FColor::Purple,
-			TEXT("Pontoon: " + BuyData.CenterSocket.ToString()));
+			TEXT("Pontoon: " + BuoyData.CenterLocation.ToString()));
 		
 	}
 

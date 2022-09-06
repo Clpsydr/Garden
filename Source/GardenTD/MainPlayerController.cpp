@@ -2,6 +2,9 @@
 #include "PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "PauseMenuWidget.h"
+#include "DrawDebugHelpers.h"
+#include "Camera/CameraComponent.h"
+#include "PhysicalInteractable.h"
 
 void AMainPlayerController::SetupInputComponent()
 {
@@ -11,6 +14,8 @@ void AMainPlayerController::SetupInputComponent()
 	InputComponent->BindAction("Jump", IE_Pressed, this, &AMainPlayerController::Jump);
 	InputComponent->BindAction("Jump", IE_Released, this, &AMainPlayerController::StopJumping);
 	InputComponent->BindAction("EscapeMenu", IE_Pressed, this, &AMainPlayerController::CallMenu);
+	InputComponent->BindAction("Shoot", IE_Pressed, this, &AMainPlayerController::Fire);
+	InputComponent->BindAction("Shoot", IE_Released, this, &AMainPlayerController::StopFiring);
 
 	InputComponent->BindAxis("CharacterMoveFront", this, &AMainPlayerController::MoveForward);
 	InputComponent->BindAxis("CharacterMoveRight", this, &AMainPlayerController::MoveRight);
@@ -71,26 +76,84 @@ void AMainPlayerController::CameraTurnY(float AxisValue)
 	}
 }
 
+// Tracing and checking for item grab possibility and vehicle boarding
 void AMainPlayerController::Interact()
 {
 	GEngine->AddOnScreenDebugMessage(INDEX_NONE, 2.f, FColor::Yellow,
 		TEXT("Interact button pressed"));
+	
+	if (bIsReadyToInteract)
+	{
+		bIsReadyToInteract = false;
+
+		FHitResult HitResult;
+		FVector TraceStart = 
+			Cast<USceneComponent>(PlayerPawn->GetComponentByClass(UCameraComponent::StaticClass()))
+				->GetComponentLocation();
+		
+		FRotator InRotEnd =
+			Cast<USceneComponent>(PlayerPawn->GetComponentByClass(UCameraComponent::StaticClass()))
+				->GetComponentRotation();
+
+		FVector TraceEnd = TraceStart + InRotEnd.RotateVector(FVector(1.f, 0.f, 0.f)) * InteractRange;
+
+		FCollisionQueryParams TraceParams = FCollisionQueryParams(FName(TEXT("PlayerInteractTrace")), true, this);
+		TraceParams.bReturnPhysicalMaterial = false;
+
+		GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd,
+			ECollisionChannel::ECC_Visibility, TraceParams);
+		DrawDebugLine(GetWorld(), TraceStart, HitResult.Location, FColor::Blue, false, 2.f, 0, 2);
+			
+		if (HitResult.IsValidBlockingHit() && HitResult.Actor->Implements<UPhysicalInteractable>())
+		{
+			Cast<IPhysicalInteractable>(HitResult.Actor)->Execute_ContextualGrab(HitResult.Actor.Get(), PlayerPawn);
+		}
+		else
+		{
+			PlayerPawn->ReleaseAnItem(true);
+		}
+
+		GetWorld()->GetTimerManager().SetTimer(ActionTimerHandle, this, &ThisClass::ResetAction, ActionCooldown, false);
+	}
+
+	//TODO: also boating procedure 
 }
 
 void AMainPlayerController::Jump()
 {
-	if (PlayerPawn && Cast<ACharacter>(PlayerPawn))
+	if (PlayerPawn)
 	{
-		Cast<ACharacter>(PlayerPawn)->Jump();
+		PlayerPawn->Fly();
 	}
 }
 
 void AMainPlayerController::StopJumping()
 {
-	if (PlayerPawn && Cast<ACharacter>(PlayerPawn))
+	if (PlayerPawn)
 	{
-		Cast<ACharacter>(PlayerPawn)->StopJumping();
+		PlayerPawn->StopFlying();
 	}
+}
+
+void AMainPlayerController::Fire()
+{
+	if (PlayerPawn)
+	{
+		PlayerPawn->bIsFiring = true;
+	}
+}
+
+void AMainPlayerController::StopFiring()
+{
+	if (PlayerPawn)
+	{
+		PlayerPawn->bIsFiring = false;
+	}
+}
+
+void AMainPlayerController::Fly(float AxisValue)
+{
+	
 }
 
 void AMainPlayerController::CallMenu()

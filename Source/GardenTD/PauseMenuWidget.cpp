@@ -51,7 +51,7 @@ void UPauseMenuWidget::Open()
 	GEngine->AddOnScreenDebugMessage(INDEX_NONE, 2.f, FColor::Yellow,
 		TEXT("Reopening level"));
 
-	UGameplayStatics::OpenLevel(GetWorld(), "BaseLevel");
+	UGameplayStatics::OpenLevel(GetWorld(), "BaseMap");
 }
 
 void UPauseMenuWidget::Close()
