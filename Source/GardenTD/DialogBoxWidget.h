@@ -1,6 +1,3 @@
-/*
-* Launches a widget displaying text from the datatable
-*/
 #pragma once
 
 #include "CoreMinimal.h"
@@ -8,9 +5,14 @@
 #include "GameStructs.h"
 #include "DialogBoxWidget.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMsgShutdown);
+
 class UImage;
 class UTextBlock;
 
+/*
+* Launches a widget displaying text from the datatable
+*/
 UCLASS()
 class GARDENTD_API UDialogBoxWidget : public UUserWidget
 {
@@ -37,5 +39,7 @@ public:
 
 		//launch timer to autoshutdown
 		UFUNCTION()
-			void AutoShut(float TTL);
+			void ShutWithNotification();
+
+		FOnMsgShutdown OnMsgShutdown;
 };

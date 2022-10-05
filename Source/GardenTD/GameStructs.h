@@ -24,8 +24,6 @@ struct FDialogueText : public FTableRowBase
 
 	UPROPERTY(EditDefaultsOnly, Category = "General")
 		FText MainText;
-
-
 };
 
 USTRUCT(BlueprintType)
@@ -46,5 +44,19 @@ struct FGaugeWidgetStats
 		FLinearColor GaugeColor;
 
 	float GetRatio() { return CurrentValue / MaxValue; };
+};
+
+USTRUCT(BlueprintType)
+struct FCombatBlob
+{
+	GENERATED_BODY()
+
+		UPROPERTY(EditDefaultsOnly, Category = "damage params")
+		float Value;
+
+	UPROPERTY(EditDefaultsOnly, Category = "damage params")
+		AActor* Killer;
+
+	//possibly to add damage type and so
 };
 

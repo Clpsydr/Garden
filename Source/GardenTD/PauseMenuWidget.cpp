@@ -12,6 +12,11 @@ void UPauseMenuWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
+	if (StartButton)
+	{
+		StartButton->OnPressed.AddDynamic(this, &ThisClass::NextLevel);
+	}
+
 	if (ReturnButton)
 	{
 		ReturnButton->OnPressed.AddDynamic(this, &ThisClass::Close);
@@ -43,6 +48,12 @@ void UPauseMenuWidget::NativeConstruct()
 
 		
 	}
+}
+
+void UPauseMenuWidget::NextLevel()
+{
+	Close();
+	UGameplayStatics::OpenLevel(GetWorld(), "MainWorldLevel");
 }
 
 

@@ -12,7 +12,12 @@ void UDialogBoxWidget::SyncData(const FDialogueText& NewData)
 	MainText->SetText(NewData.MainText);
 }
 
-void UDialogBoxWidget::AutoShut(float TTL)
+void UDialogBoxWidget::ShutWithNotification()
 {
-	//currently shuts by timer from manager
+	//shutdown timer is launched by manager
+	if (OnMsgShutdown.IsBound())
+	{
+		OnMsgShutdown.Broadcast();
+	}
+	this->RemoveFromParent();
 }

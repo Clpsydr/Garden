@@ -1,45 +1,42 @@
 #include "TalkingActor.h"
 #include "DialogBoxWidget.h"
+#include "HomeBase.h"
+#include "Kismet/GameplayStatics.h"
 
 ATalkingActor::ATalkingActor()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 }
 
 void ATalkingActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//FDialogueText* SomeText = DialogueData->FindRow<FDialogueText>(FName(TEXT("intro")), "TextLabel");
-	//SayDialogueLine(*SomeText); //
-	SayDialogueLine("intro", "TextLabel");
+	AHomeBase* Base = Cast<AHomeBase>(UGameplayStatics::GetActorOfClass(GetWorld(), AHomeBase::StaticClass()));
+	if (Base)
+	{
+		Base->OnGameEvent.AddDynamic(this, &ThisClass::RememberNewMessage);
+	}
 }
 
-void ATalkingActor::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
-//however instead of adding to viewport keeps a list of those
-//sends other after timer, which should have the same TTL on change as one sent to dialogue window for closure
-
-//const FDialogueText& NewLineToSay
-void ATalkingActor::SayDialogueLine(FString RowName, FString ContextString)   //
+//preparing message and keeping it in stack, calling it if message log is not busy
+void ATalkingActor::RememberNewMessage(FString RowName)
 {
 	if (DialogueData)
 	{
-		FDialogueText* SomeText = DialogueData->FindRow<FDialogueText>(FName(RowName), ContextString);
+		UDialogBoxWidget* NewDialogueWindow = CreateWidget<UDialogBoxWidget>(GetWorld(), VNWindowType);
+		FDialogueText* SomeText = DialogueData->FindRow<FDialogueText>(FName(RowName), "TextLabel");
+
 		if (SomeText)
 		{
-
-			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 2.f, FColor::Yellow,
-				TEXT("Called dialogue box"));
-
-			UDialogBoxWidget* NewDialogueWindow = CreateWidget<UDialogBoxWidget>(GetWorld(), VNWindowType);
-			NewDialogueWindow->AddToViewport(50);
 			NewDialogueWindow->SyncData(*SomeText);
+			MessageBackLog.Add(NewDialogueWindow);
 
-			GetWorldTimerManager().SetTimer(HandleToShutWidget, NewDialogueWindow, &UDialogBoxWidget::RemoveFromParent, ShowDuration, false);
+			if (MessageBackLog.Num() == 1)
+			{
+
+				LaunchNextMessage();
+			}
 		}
 		else
 		{
@@ -50,8 +47,25 @@ void ATalkingActor::SayDialogueLine(FString RowName, FString ContextString)   //
 	else
 	{
 		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 2.f, FColor::Red,
-			TEXT("DataTable unavailable"));
+			TEXT("DialogueData is not ready"));
 	}
 }
 
+//calling first message in stack and binding to search again for the next one, once its detached
+//TODO: two messages in a row will "hang", because stack size doesnt account for currently shown ui
+//
+void ATalkingActor::LaunchNextMessage()
+{
+	if (MessageBackLog.Num() > 0)
+	{
+		UDialogBoxWidget* ThisWidget = MessageBackLog[0];
+		MessageBackLog.Remove(ThisWidget);
+		ThisWidget->AddToViewport();
+
+		GetWorldTimerManager().SetTimer(HandleToShutWidget, ThisWidget,
+			&UDialogBoxWidget::ShutWithNotification, ShowDuration, false);
+
+		ThisWidget->OnMsgShutdown.AddDynamic(this, &ThisClass::LaunchNextMessage);
+	}
+}
 

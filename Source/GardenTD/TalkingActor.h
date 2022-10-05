@@ -36,7 +36,9 @@ private:
 	TArray<UDialogBoxWidget*> MessageBackLog;
 
 public:	
-	virtual void Tick(float DeltaTime) override;
+	UFUNCTION(BlueprintCallable)
+	void RememberNewMessage(FString RowName);
 
-	void SayDialogueLine(FString RowName, FString ContextString);  //
+	UFUNCTION()
+	void LaunchNextMessage();
 };

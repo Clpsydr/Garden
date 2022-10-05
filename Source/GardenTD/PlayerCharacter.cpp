@@ -1,9 +1,17 @@
 #include "PlayerCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerStart.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "PhysicalInteractable.h"
 #include "PhysicsEngine/PhysicsHandleComponent.h"
+#include "AtmosphereController.h"
+#include "NiagaraComponent.h"
+#include "Kismet/GameplayStatics.h" 
+#include "PoolingSystem.h"
+#include "GameStructs.h"
+#include "Bullet.h"
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -18,6 +26,8 @@ APlayerCharacter::APlayerCharacter()
 		USceneComponent* SkelMesh = Cast<USceneComponent>(GetComponentByClass(USkeletalMesh::StaticClass()));
 	ItemGrabLocation->SetupAttachment(Camera);
 
+	NightWeatherEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Weather effect"));
+	NightWeatherEffect->SetupAttachment(RootComponent);
 }
 
 void APlayerCharacter::BeginPlay()
@@ -27,15 +37,48 @@ void APlayerCharacter::BeginPlay()
 	CurrentHp = MaxHp;
 	JetpackResource = JetpackCapacity;
 
+	//applying weather conditions
+	if (NightWeatherEffect)
+	{
+		AActor* Atm = UGameplayStatics::GetActorOfClass(GetWorld(), AAtmosphereController::StaticClass());
+		if (Atm)
+		{
+			Cast<AAtmosphereController>(Atm)->OnDusk.AddDynamic(this, &ThisClass::EnableNightWeather);
+			Cast<AAtmosphereController>(Atm)->OnDawn.AddDynamic(this, &ThisClass::DisableNightWeather);
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.f, FColor::Red,
+				TEXT("Failure to detect any directional light - character"));
+		}
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 5.f, FColor::Red,
+			TEXT("quack"));
+	}
+
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	//speeding update
+	if (bIsDashing)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = 2500.f;
+	}
+	else
+	{
+		GetCharacterMovement()->MaxWalkSpeed = 1200.f;
+	}
+
+
 	//Flying status update
 	UCharacterMovementComponent* ThisComp = Cast<UCharacterMovementComponent>(GetComponentByClass(UCharacterMovementComponent::StaticClass()));
 
+	//Managing fuel
 	if (bIsJetpackOn)
 	{
 		JetpackResource -= JetpackDrain;
@@ -49,6 +92,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 	}
 	else if (ThisComp->GravityScale < 1.f)
 	{
+		JetpackResource = FMath::Clamp(JetpackResource + JetpackDrain / 2, JetpackResource + JetpackDrain / 2, JetpackCapacity);
 		ThisComp->GravityScale = FMath::Clamp(ThisComp->GravityScale, ThisComp->GravityScale + DeltaTime * JetpackTopSpeed, 10.f);
 	}
 
@@ -84,8 +128,6 @@ void APlayerCharacter::StrengthUpdate(float DeltaTime)
 	{
 		StrengthLeft = FMath::Clamp(StrengthLeft + 20 * DeltaTime, StrengthLeft + 20 * DeltaTime, TopStrength);
 	}
-
-
 }
 
 void APlayerCharacter::MoveSide(float AxisValue)
@@ -164,10 +206,10 @@ void APlayerCharacter::GrabAnItem(AActor* NewlyGrabbedItem)
 		ContemporaryPhysicsComp->GrabComponentAtLocation(GrabbedItem, "None", ItemGrabLocation->GetComponentLocation());
 		ContemporaryPhysicsComp->SetAngularDamping(0.1f);
 		CurrentWeight = GrabbedItem->GetMass();
-
 	}
 }
 
+/// Grabbed item gets detached, possibly with added impulse
 void APlayerCharacter::ReleaseAnItem(bool bWithForce)
 {
 	if (GrabbedItem)
@@ -179,7 +221,7 @@ void APlayerCharacter::ReleaseAnItem(bool bWithForce)
 
 		if (bWithForce)
 		{
-			GrabbedItem->AddImpulse(Camera->GetForwardVector() * 25000, NAME_None, false);
+			GrabbedItem->AddImpulse(Camera->GetForwardVector() * 40000, NAME_None, false);
 
 			///in worse case, work with cast results
 			if (GrabbedItem->GetOwner()->Implements<UPhysicalInteractable>())
@@ -198,8 +240,41 @@ void APlayerCharacter::ReleaseAnItem(bool bWithForce)
 	}
 }
 
-void APlayerCharacter::Hurt(const float DamageAmount)
+void APlayerCharacter::Hurt(const FCombatBlob& DamageInfo)
 {
+	CurrentHp = FMath::Clamp(CurrentHp - DamageInfo.Value, 0.f, MaxHp);
+	
+	if (CurrentHp <= 0.f)
+	{
+		if (this == DamageInfo.Killer)
+		{
+			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.f, FColor::Yellow,
+				TEXT("Player killed himself"));
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.f, FColor::Yellow,
+				TEXT("Player got kileld by " + DamageInfo.Killer->GetName()));
+		}
+
+		GetMesh()->SetSimulatePhysics(true);
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		if (OnDeath.IsBound())
+		{
+			OnDeath.Broadcast();
+		}
+	}
+}
+
+void APlayerCharacter::HazardDamage(const float AbsoluteDamage)
+{
+	GEngine->AddOnScreenDebugMessage(INDEX_NONE, 1.f, FColor::Yellow,
+		TEXT("Player is in dangerous area"));
+
+	FCombatBlob NewDamage;
+	NewDamage.Value = AbsoluteDamage;
+	NewDamage.Killer = this; //ignoring safety instructions is a suicide
+	Hurt(NewDamage);
 }
 
 void APlayerCharacter::FireGun()
@@ -208,10 +283,20 @@ void APlayerCharacter::FireGun()
 
 	if (BulletType)
 	{
-		AActor* NewBullet;
+		/*AActor* NewBullet;
 		NewBullet = GetWorld()->SpawnActor<AActor>(BulletType,
 			ItemGrabLocation->GetComponentLocation(),
-			Camera->GetComponentRotation());
+			Camera->GetComponentRotation());*/
+
+		UPoolingSystem* BulletPool = GetWorld()->GetSubsystem<UPoolingSystem>();
+		FTransform SpawnTransform(Camera->GetComponentRotation(), 
+								ItemGrabLocation->GetComponentLocation(), FVector::OneVector);
+		ABullet* Bullet = Cast<ABullet>(BulletPool->RetrieveBullet(BulletType, SpawnTransform));
+		if (Bullet)
+		{
+			Bullet->SetOwner(this);
+			Bullet->Start();
+		}
 	}
 	else
 	{
@@ -222,7 +307,42 @@ void APlayerCharacter::FireGun()
 	GetWorld()->GetTimerManager().SetTimer(ReloadTimerHandle, this, &ThisClass::Reload, ReloadSpeed, false);
 }
 
+void APlayerCharacter::Respawn()
+{
+	CurrentHp = MaxHp;
+	EnergyOnHands = 0.f;
+	CurrentWeight = 0.f;
+
+	AActor* Start = UGameplayStatics::GetActorOfClass(GetWorld(), APlayerStart::StaticClass());
+	SetActorLocation(Start->GetActorLocation(), true);
+	SetActorRotation(Start->GetActorRotation(), ETeleportType::ResetPhysics);
+
+	GetMesh()->SetSimulatePhysics(false);
+	bIsReadyToFire = true;
+}
+
 void APlayerCharacter::Reload()
 {
 	bIsReadyToFire = true;
+}
+
+void APlayerCharacter::EnableNightWeather()
+{
+	if (NightWeatherEffect)
+	{
+		NightWeatherEffect->Activate();
+	}
+}
+
+void APlayerCharacter::DisableNightWeather()
+{
+	if (NightWeatherEffect)
+	{
+		NightWeatherEffect->Deactivate();
+	}
+}
+
+void APlayerCharacter::GainEnergy(const float EnergyAmount)
+{
+	EnergyOnHands += EnergyAmount;
 }

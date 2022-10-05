@@ -3,10 +3,15 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Combatable.h"
+#include "NiagaraComponent.h"
+#include "GameStructs.h"
 #include "PlayerCharacter.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerDeath);
 
 class UCameraComponent;
 class UPhysicsHandleComponent;
+class UNiagaraComponent;
 
 UCLASS()
 class GARDENTD_API APlayerCharacter : public ACharacter, public ICombatable
@@ -23,6 +28,8 @@ public:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Components")
 		USceneComponent* ItemGrabLocation;
+
+	FOnPlayerDeath OnDeath;
 
 	// scene component for grabbing location
 private:
@@ -73,12 +80,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "spawn subclasses")
 		TSubclassOf<AActor> BulletType;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "PlayerVisuals")
+		UNiagaraComponent* NightWeatherEffect;
+
 	float CurrentWeight = 0.f;
 
 	float EnergyOnHands = 0.f;
 
 public:	
 	bool bIsFiring = false;
+
+	bool bIsDashing = false;
 
 	virtual void Tick(float DeltaTime) override;
 
@@ -101,6 +113,9 @@ public:
 	virtual void CameraTurnY(float AxisValue);
 
 	UFUNCTION(BlueprintCallable)
+		void Respawn();
+
+	UFUNCTION(BlueprintCallable)
 		float GetFuelRatio();
 
 	UFUNCTION(BlueprintCallable)
@@ -118,6 +133,18 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void AddEnergy(float EnergyBonus) { EnergyOnHands += EnergyBonus; };
 
-	virtual void Hurt(const float DamageAmount) override;
-		
+	UFUNCTION()
+	void EnableNightWeather();
+
+	UFUNCTION()
+	void DisableNightWeather();
+
+	virtual void Hurt(const FCombatBlob& DamageInfo) override;
+
+	UFUNCTION(BlueprintCallable)
+	virtual void HazardDamage(const float AbsoluteDamage) override;
+
+	virtual void GainEnergy(const float EnergyAmount) override;
+
+	
 };

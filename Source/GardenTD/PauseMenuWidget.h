@@ -20,6 +20,9 @@ public:
 	virtual void NativeConstruct() override;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+		UButton* StartButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
 		UButton* ReturnButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
@@ -51,4 +54,7 @@ public:
 
 	UFUNCTION()
 		void Options();
+
+	UFUNCTION()
+		void NextLevel();
 };

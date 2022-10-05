@@ -1,6 +1,7 @@
 #include "MainPlayerController.h"
 #include "PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerStart.h"
 #include "PauseMenuWidget.h"
 #include "DrawDebugHelpers.h"
 #include "Camera/CameraComponent.h"
@@ -16,6 +17,8 @@ void AMainPlayerController::SetupInputComponent()
 	InputComponent->BindAction("EscapeMenu", IE_Pressed, this, &AMainPlayerController::CallMenu);
 	InputComponent->BindAction("Shoot", IE_Pressed, this, &AMainPlayerController::Fire);
 	InputComponent->BindAction("Shoot", IE_Released, this, &AMainPlayerController::StopFiring);
+	InputComponent->BindAction("Dash", IE_Pressed, this, &AMainPlayerController::EnableDashing);
+	InputComponent->BindAction("Dash", IE_Released, this, &AMainPlayerController::DisableDashing);
 
 	InputComponent->BindAxis("CharacterMoveFront", this, &AMainPlayerController::MoveForward);
 	InputComponent->BindAxis("CharacterMoveRight", this, &AMainPlayerController::MoveRight);
@@ -29,7 +32,7 @@ void AMainPlayerController::BeginPlay()
 	Super::BeginPlay();
 
 	PlayerPawn = Cast<APlayerCharacter>(GetPawn());
-	OriginalPawn = Cast<APlayerCharacter>(GetPawn());
+	PlayerPawn->OnDeath.AddDynamic(this, &ThisClass::GameoverState);
 }
 
 // Pawns utilize OnPossess or OnUnpossess events in BP to remove or change themselves accordingly
@@ -88,8 +91,7 @@ void AMainPlayerController::Interact()
 
 		FHitResult HitResult;
 		FVector TraceStart = 
-			Cast<USceneComponent>(PlayerPawn->GetComponentByClass(UCameraComponent::StaticClass()))
-				->GetComponentLocation();
+			PlayerPawn->ItemGrabLocation->GetComponentLocation();
 		
 		FRotator InRotEnd =
 			Cast<USceneComponent>(PlayerPawn->GetComponentByClass(UCameraComponent::StaticClass()))
@@ -116,11 +118,21 @@ void AMainPlayerController::Interact()
 		GetWorld()->GetTimerManager().SetTimer(ActionTimerHandle, this, &ThisClass::ResetAction, ActionCooldown, false);
 	}
 
-	//TODO: also boating procedure 
+	//TODO: also boating procedure that is currently in BP
 }
 
+//manages respawn as well
 void AMainPlayerController::Jump()
 {
+	if (bIsGameOver)
+	{
+		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 2.f, FColor::Yellow,
+			TEXT("Yes we are dead, currently trying to respawn"));
+
+		PlayerPawn->UnPossessed();
+		Respawn();
+	}
+
 	if (PlayerPawn)
 	{
 		PlayerPawn->Fly();
@@ -151,28 +163,31 @@ void AMainPlayerController::StopFiring()
 	}
 }
 
-void AMainPlayerController::Fly(float AxisValue)
+void AMainPlayerController::EnableDashing()
 {
-	
+	PlayerPawn->bIsDashing = true;
+}
+
+void AMainPlayerController::DisableDashing()
+{
+	PlayerPawn->bIsDashing = false;
 }
 
 void AMainPlayerController::CallMenu()
 {
-	/// still needs a pause
 	if (MainMenu)
 	{
 		GEngine->AddOnScreenDebugMessage(INDEX_NONE, 2.f, FColor::Yellow,
 			TEXT("Menu purged"));
 
-		FInputModeGameAndUI Mode;
-		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		bShowMouseCursor = false;
-		SetInputMode(Mode);
-
 		MainMenu->RemoveFromParent();
 		MainMenu = nullptr;
+		bShowMouseCursor = false;
 
-		//SetPause(false, FCanUnpause());
+		FInputModeGameOnly Mode;
+		SetInputMode(Mode);
+
+		SetPause(false, FCanUnpause());
 	}
 	else
 	{
@@ -182,13 +197,64 @@ void AMainPlayerController::CallMenu()
 		MainMenu = CreateWidget<UPauseMenuWidget>(this, MainMenuSample);
 
 		FInputModeGameAndUI Mode;
-		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+	    Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		bShowMouseCursor = true;
 		SetInputMode(Mode);
 
-
 		MainMenu->AddToViewport(150); 
 
-		//SetPause(true, FCanUnpause());
+		SetPause(true, FCanUnpause());
 	}
+}
+
+void AMainPlayerController::InitHUD()
+{
+	if (HudTypeUI)
+	{
+		HudUI = CreateWidget<UUserWidget>(this, HudTypeUI);
+		HudUI->AddToViewport(25);
+	}
+}
+
+void AMainPlayerController::GameoverState()
+{
+	bIsGameOver = true;
+
+	if (GameoverUI && !GameoverMenu)
+	{
+		HudUI->RemoveFromParent();
+
+		GameoverMenu = CreateWidget<UUserWidget>(this, GameoverUI);
+		GameoverMenu->AddToViewport(100);
+	}
+}
+
+void AMainPlayerController::ActiveState()
+{
+	bIsGameOver = false;
+
+	GameoverMenu->RemoveFromParent();
+	InitHUD();
+}
+
+void AMainPlayerController::Respawn()
+{
+	AActor* Start = UGameplayStatics::GetActorOfClass(GetWorld(), APlayerStart::StaticClass());
+	if (OriginalPawn)
+	{
+		PlayerPawn = GetWorld()->SpawnActor<APlayerCharacter>(OriginalPawn, Start->GetActorLocation(), Start->GetActorRotation());
+		
+		if (PlayerPawn)
+		{
+			Possess(PlayerPawn);
+
+			//announcing new ref to player pawn
+			if (OnNewPawnIssued.IsBound())
+			{
+				OnNewPawnIssued.Broadcast(PlayerPawn);
+			}
+		}
+	}
+
+	ActiveState();
 }
